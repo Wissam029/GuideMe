@@ -202,6 +202,40 @@ The project database contains tables for:
 - Learning platform integration
 
 ---
+## 📸 Screenshots
+
+### Home Page
+![Home Page](screenshots/Home%20page.png)
+
+### User Profile
+![Profile](screenshots/Profile.png)
+
+### Personality Test
+![Personality Test](screenshots/Personality%20Test.png)
+
+### Personality Test Result
+![Personality Test Result](screenshots/Personality%20Test%20Result.png)
+
+### Career Path Selection
+![Career Path Selection](screenshots/Career%20Path%20Selection.png)
+
+### Manual Career Selection
+![Manual Career Selection](screenshots/Manual%20Career%20Selection.png)
+
+### Generated Career Path Suggestions
+![Generated Career Path Suggestions](screenshots/Generated%20Career%20Path%20Suggestions%20Result.png)
+
+### Detailed Career Analysis
+![Detailed Career Analysis](screenshots/Detailed%20Career%20Analysis%20View.png)
+
+### Dashboard
+![Dashboard](screenshots/Dashboard.png)
+
+### Personalized Learning Plan
+![Learning Plan](screenshots/Plan.png)
+
+### AI Quiz
+![Quiz](screenshots/quiz.png)
 
 ## Authors
 
