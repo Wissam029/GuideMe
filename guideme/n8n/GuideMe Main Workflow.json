@@ -1,0 +1,1937 @@
+{
+  "name": "Notification Flow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-plan",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        1120,
+        256
+      ],
+      "id": "3ea35a99-5ae4-446c-8f52-0cc4180be0b0",
+      "name": "Webhook",
+      "webhookId": "232eba2c-2fd3-4167-aea0-17347cd11ab3"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2016,
+        240
+      ],
+      "id": "bfe9c1be-8829-4e87-80df-f2f41de8596a",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"skills\": \"{{ $json.body.skill }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1312,
+        256
+      ],
+      "id": "9822a0d9-13c0-46b3-8bee-e159a52b53e1",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1472,
+        432
+      ],
+      "id": "a36ff900-4eb2-451b-8446-77c2d06e6dcd",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "5EbetNwJtjAn2EjD",
+          "name": "Google Gemini(PaLM) Api account 37"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an expert learning planner.\n\nYou have access to a tool that contains rules for generating learning plans.\n\nINSTRUCTIONS:\n- ALWAYS use the tool before answering\n- DO NOT ask the user questions\n- Generate the plan directly\n\nCreate a structured learning plan for:\n\nSkill: {{ $json.skills }}\nweeks: {{ $('Webhook').item.json.body.weeks }}\ndays: {{ $('Webhook').item.json.body.days }}\n\nFollow all rules strictly.\nRETURN ONLY VALID JSON.\n\nFormat:\n\n{\n  \"skill\": \"{{ $json.skills }}\",\n  \"plan\": [\n    {\n      \"day\": 1,\n      \"title\": \"\",\n      \"description\": \"\",\n      \"task\": \"\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1472,
+        240
+      ],
+      "id": "1455aa33-6f6d-4700-b4d3-62b395058f76",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "description": "This tool contains rules for generating structured learning plans. \nUse it whenever the user asks to create a learning plan."
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolVectorStore",
+      "typeVersion": 1.1,
+      "position": [
+        1632,
+        448
+      ],
+      "id": "7cd1b31a-2d7f-4885-b4c8-87455775c348",
+      "name": "Answer questions with a vector store"
+    },
+    {
+      "parameters": {
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "v3n8n",
+          "mode": "list",
+          "cachedResultName": "v3n8n"
+        },
+        "options": {
+          "pineconeNamespace": "plan"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        1456,
+        624
+      ],
+      "id": "d286dab3-3e7e-416a-9dbe-8b3b58a84d83",
+      "name": "Pinecone Vector Store2",
+      "credentials": {
+        "pineconeApi": {
+          "id": "1mFb5UcqJqY4I7be",
+          "name": "PineconeApi account 5"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "=models/gemini-embedding-2-preview"
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1552,
+        832
+      ],
+      "id": "265fd758-1927-4be7-a9ac-8d013132509f",
+      "name": "Embeddings Google Gemini1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "6PAgHURdVDui50hq",
+          "name": "Google Gemini(PaLM) Api account 36"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1792,
+        608
+      ],
+      "id": "0f2f4d3d-5528-445c-8a87-0751db201684",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "6PAgHURdVDui50hq",
+          "name": "Google Gemini(PaLM) Api account 36"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let raw = $json.output;\n\n// تنظيف markdown\nlet clean = raw\n  .replace(/```json/g, '')\n  .replace(/```/g, '')\n  .trim();\n\nlet parsed;\n\ntry {\n  // 🔥 الحل السحري\n  parsed = eval('(' + clean + ')');\n} catch (e) {\n  return [\n    {\n      json: {\n        error: \"Still failed\",\n        raw: clean\n      }\n    }\n  ];\n}\n\n// إذا array → لفّه\nif (Array.isArray(parsed)) {\n  parsed = { plan: parsed };\n}\n\nreturn [\n  {\n    json: parsed\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1824,
+        240
+      ],
+      "id": "afef58c1-c66c-47d0-9a2c-225154b8a164",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-quiz",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        1136,
+        1232
+      ],
+      "id": "91ead259-4b2e-42d8-a3be-420297a08658",
+      "name": "Webhook1",
+      "webhookId": "232eba2c-2fd3-4167-aea0-17347cd11ab3"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2000,
+        1232
+      ],
+      "id": "76d6a0f6-8de8-4789-bf04-88bd93eadd21",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"plan\": {{ $json.body.plan }}\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1296,
+        1248
+      ],
+      "id": "b1f44f58-df80-49e4-972f-9f78fa979c6b",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "modelName": "=models/gemini-2.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1456,
+        1424
+      ],
+      "id": "4794df2b-32ac-4e11-a1c2-97f8d2a44311",
+      "name": "Google Gemini Chat Model2",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "6PAgHURdVDui50hq",
+          "name": "Google Gemini(PaLM) Api account 36"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an expert assessment designer.\n\nYour task is to generate a beginner-friendly multiple-choice quiz based ONLY on the provided learning plan.\n\nIMPORTANT RULES:\n- ALL questions must be multiple-choice (MCQ)\n- Each question must have exactly 4 options (A, B, C, D)\n- ONLY ONE correct answer per question\n- Questions must be simple and suitable for beginners\n- Do NOT include any content outside the learning plan\n- Do NOT include explanations outside the JSON\n\nSTRUCTURE:\n- Section 1: Basics (easy)\n- Section 2: Understanding & Application (medium)\n- Section 3: Light Challenge (slightly harder)\n\nANSWER RULES:\n- Provide the correct answer\n- Provide a VERY SHORT explanation (1 line only) explaining WHY the answer is correct\n\nOUTPUT FORMAT (STRICT JSON ONLY):\n\n{\n  \"quiz\": {\n    \"section_1_basics\": [\n      {\n        \"question\": \"\",\n        \"options\": {\n          \"A\": \"\",\n          \"B\": \"\",\n          \"C\": \"\",\n          \"D\": \"\"\n        },\n        \"answer\": \"\",\n        \"explanation\": \"\"\n      }\n    ],\n    \"section_2_application\": [\n      {\n        \"question\": \"\",\n        \"options\": {\n          \"A\": \"\",\n          \"B\": \"\",\n          \"C\": \"\",\n          \"D\": \"\"\n        },\n        \"answer\": \"\",\n        \"explanation\": \"\"\n      }\n    ],\n    \"section_3_challenge\": [\n      {\n        \"question\": \"\",\n        \"options\": {\n          \"A\": \"\",\n          \"B\": \"\",\n          \"C\": \"\",\n          \"D\": \"\"\n        },\n        \"answer\": \"\",\n        \"explanation\": \"\"\n      }\n    ]\n  }\n}\n\nSTRICT RULE:\n- RETURN ONLY VALID JSON\n- DO NOT add any text before or after JSON\n\nNow generate the quiz based on this learning plan:\n\n{{ JSON.stringify($json.plan, null, 2) }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1456,
+        1232
+      ],
+      "id": "497b2333-0988-485a-b000-322112ef6664",
+      "name": "AI Agent2"
+    },
+    {
+      "parameters": {
+        "jsCode": "let raw = $json.output;\n\n// 🧹 إزالة markdown (```json)\nraw = raw.replace(/```json/g, '')\n         .replace(/```/g, '')\n         .trim();\n\n// 🧠 استخراج JSON فقط (من أول { إلى آخر })\nconst firstBrace = raw.indexOf('{');\nconst lastBrace = raw.lastIndexOf('}');\n\nif (firstBrace === -1 || lastBrace === -1) {\n  return [{ json: { error: \"No JSON found\", raw } }];\n}\n\nlet jsonString = raw.substring(firstBrace, lastBrace + 1);\n\n// 🧪 محاولة التحويل\ntry {\n  const parsed = JSON.parse(jsonString);\n  return [{ json: parsed }];\n} catch (e) {\n  return [{\n    json: {\n      error: \"JSON parse failed\",\n      message: e.message,\n      raw: jsonString\n    }\n  }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1808,
+        1232
+      ],
+      "id": "2caf4997-ad35-42f0-be1c-0999153af890",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "content": "# Plan",
+        "height": 768,
+        "width": 1088
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1088,
+        192
+      ],
+      "id": "78c11a72-ee93-44ab-9473-f43bcd8a8980",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "# Quize",
+        "height": 448,
+        "width": 1280
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        992,
+        1136
+      ],
+      "id": "9cc1cd11-ec93-4236-b99b-0bc18d4751c6",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "v3n8n",
+          "mode": "list",
+          "cachedResultName": "v3n8n"
+        },
+        "options": {
+          "pineconeNamespace": "v2n8n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        224,
+        1568
+      ],
+      "id": "3d0c1700-0d03-4ac0-876d-4b24cb8e42f9",
+      "name": "Pinecone Vector Store1",
+      "credentials": {
+        "pineconeApi": {
+          "id": "1mFb5UcqJqY4I7be",
+          "name": "PineconeApi account 5"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "Use this tool to calculate Holland RIASEC results.\nInput:\n- answers: array of answer objects with question_id, choice, and domain\n- user_id: optional user id\n- test_version: optional test version\n\nReturn the scores, percentages, and top3_code.",
+        "jsCode": "const incoming = $('Edit Fields3').first().json;\n\n\nlet payload = incoming;\n\nif (incoming.query) {\n  try {\n    payload = JSON.parse(incoming.query);\n  } catch (e) {\n    payload = {};\n  }\n}\n\n\nconst answers = payload.answers ?? [];\nconst user_id = payload.user_id ?? null;\nconst test_version = payload.test_version ?? \"v1\";\n\nconst scores = { R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 };\n\nfor (const a of answers) {\n  const d = a.domain;\n  const c = Number(a.choice);\n\n  if (scores[d] !== undefined && Number.isFinite(c)) {\n    scores[d] += c;\n  }\n}\n\nconst MAX = 28;\n\nconst percentages = {};\nfor (const k of Object.keys(scores)) {\n  percentages[k] = Math.round((scores[k] / MAX) * 100);\n}\n\nconst tieOrder = [\"R\", \"I\", \"A\", \"S\", \"E\", \"C\"];\nconst sorted = Object.keys(scores).sort((a, b) => {\n  if (scores[b] !== scores[a]) return scores[b] - scores[a];\n  return tieOrder.indexOf(a) - tieOrder.indexOf(b);\n});\n\nconst top3_code = sorted.slice(0, 3).join(\"\");\n\nreturn JSON.stringify({\n  user_id,\n  test_version,\n  top3_code,\n  scores,\n  percentages,\n  result_summary: {\n    dominant_traits: top3_code.split(\"\"),\n    highest_score: Math.max(...Object.values(scores))\n  }\n});",
+        "specifyInputSchema": true,
+        "jsonSchemaExample": "{\n  \"answers\": [\n    {\n      \"question_id\": 1,\n      \"choice\": 4,\n      \"domain\": \"R\"\n    }\n  ],\n  \"user_id\": 7,\n  \"test_version\": \"v1\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.3,
+      "position": [
+        176,
+        1328
+      ],
+      "id": "95f9d208-d44d-45e1-a9f0-60dd601acd74",
+      "name": "User Holland Scoring"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"top3_code\": \"ERC\",\n  \"percentages\": {\n    \"R\": \"64%\",\n    \"I\": \"43%\",\n    \"A\": \"57%\",\n    \"S\": \"57%\",\n    \"E\": \"79%\",\n    \"C\": \"61%\"\n  },\n  \"scores\": {\n    \"I\": 12,\n    \"A\": 8,\n    \"S\": 10,\n    \"E\": 6,\n    \"C\": 4,\n    \"R\": 3\n  },\n  \"summary\": \"Short IT-focused explanation in 3 to 4 sentences.\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        544,
+        1200
+      ],
+      "id": "760fa3c1-bc4b-466b-91ee-1289802dd19c",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        704,
+        2624
+      ],
+      "id": "b440191c-9746-4d8e-b086-5ebe2e4fe459",
+      "name": "Google Gemini Chat Model4",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "6PAgHURdVDui50hq",
+          "name": "Google Gemini(PaLM) Api account 36"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-embedding-001"
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        416,
+        2800
+      ],
+      "id": "7fa76bb4-f107-420f-9151-102eb1fde18b",
+      "name": "Embeddings Google Gemini3",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "6PAgHURdVDui50hq",
+          "name": "Google Gemini(PaLM) Api account 36"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "v3n8n",
+          "mode": "list",
+          "cachedResultName": "v3n8n"
+        },
+        "options": {
+          "pineconeNamespace": "v2n8n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        400,
+        2624
+      ],
+      "id": "30391a96-314f-4258-a16d-d943ba0e5904",
+      "name": "Pinecone Vector Store3",
+      "credentials": {
+        "pineconeApi": {
+          "id": "1mFb5UcqJqY4I7be",
+          "name": "PineconeApi account 5"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "Retrieve supporting context about IT career roles and domains from the Saudi Digital Skills Framework.\n\nUse this tool to understand:\n- the nature of the career role in IT\n- how the role fits within digital domains in the Saudi Digital Skills Framework\n- how this role aligns with the user’s profile\n\nHolland personality information can be used only as a secondary reference.\n\nDo not use this tool as a source of exact or detailed job descriptions.\n\nAlways provide a clear query that includes:\n- the career title or IT role\n- its context within IT or digital domains\n\nUse the retrieved information to support and enrich the explanation, not to replace the main analysis.",
+        "topK": 2
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolVectorStore",
+      "typeVersion": 1.1,
+      "position": [
+        480,
+        2416
+      ],
+      "id": "4666ba07-8393-431a-b547-b91d484251f2",
+      "name": "Answer questions with a vector store2"
+    },
+    {
+      "parameters": {
+        "content": "# Career Path Agent ",
+        "height": 960,
+        "width": 1200
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -304,
+        2032
+      ],
+      "id": "a6b40fd3-f6fb-4873-b059-378a88d2dd82",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -160,
+        2400
+      ],
+      "id": "5900708f-37f0-4832-9a8b-2c98ef764e1b",
+      "name": "Google Gemini Chat Model5",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "6PAgHURdVDui50hq",
+          "name": "Google Gemini(PaLM) Api account 36"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d0f77883-f696-4b1c-ba0d-41b1fde0ef5a",
+              "name": "user_id",
+              "value": "={{ $json.body.user_id }}",
+              "type": "string"
+            },
+            {
+              "id": "6fe642db-bd4e-46f7-8357-cb98058ab925",
+              "name": "mode",
+              "value": "={{ $json.body.mode }}",
+              "type": "string"
+            },
+            {
+              "id": "a08fddc1-497d-490e-a106-5252f585dd4b",
+              "name": "holland_code",
+              "value": "={{ $json.body.holland_code }}",
+              "type": "string"
+            },
+            {
+              "id": "1dea2618-cb2e-46cd-825e-7271e1fcc018",
+              "name": "skills",
+              "value": "={{ $json.body.skills_raw }}",
+              "type": "array"
+            },
+            {
+              "id": "a49bbe0c-a9c9-4882-8727-144b043678cc",
+              "name": "chosen_career_id",
+              "value": "={{ $json.body.chosen_career_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -80,
+        2192
+      ],
+      "id": "5b890dd9-ca50-4f59-bda7-3812caf31e96",
+      "name": "Edit Fields2"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"mode\": \"suggestion\",\n  \"careers\": [\n    {\n      \"career_id\": 12,\n      \"career_title\": \"Data Analyst\",\n      \"overall_match\": 71,\n      \"holland_match\": 83,\n      \"skills_match\": 60,\n      \"strengths\": [\"Python\", \"SQL\", \"Excel\"],\n      \"gaps\": [\"Statistics\", \"Tableau\"],\n      \"ai_explanation\": \"This role fits your analytical personality and your current data-related skills. Strengthening statistics and visualization tools would improve your readiness.\"\n    },\n    {\n      \"career_id\": 14,\n      \"career_title\": \"Backend Developer\",\n      \"overall_match\": 59,\n      \"holland_match\": 70,\n      \"skills_match\": 40,\n      \"strengths\": [\"Git\", \"SQL\"],\n      \"gaps\": [\"Java\", \"APIs\", \"Docker\"],\n      \"ai_explanation\": \"This role partially matches your investigative and realistic traits. Strengthening backend programming and system design skills would increase compatibility.\"\n    },\n    {\n      \"career_id\": 1,\n      \"career_title\": \"UX Designer\",\n      \"overall_match\": 55,\n      \"holland_match\": 60,\n      \"skills_match\": 50,\n      \"strengths\": [\"Figma\"],\n      \"gaps\": [\"User Research\"],\n      \"ai_explanation\": \"This career aligns with creative and problem-solving aspects of your personality. Expanding user research and design thinking skills would improve your fit.\"\n    }\n  ]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        768,
+        2352
+      ],
+      "id": "23996ef9-3bae-429e-9181-539f1c0e31ae",
+      "name": "Structured Output Parser1"
+    },
+    {
+      "parameters": {
+        "description": "=Calculate IT career match using the user's Holland code and skills.",
+        "workflowId": {
+          "__rl": true,
+          "value": "GaZk6PTVYf0LAQGG4yzZO",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/GaZk6PTVYf0LAQGG4yzZO",
+          "cachedResultName": "Career Path Match Scoring"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "mode": "={{ $json.mode }}",
+            "holland_code": "={{ $json.holland_code }}",
+            "skills": "={{ $json.skills }}",
+            "chosen_career_id": "={{ $json.chosen_career_id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "mode",
+              "displayName": "mode",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "holland_code",
+              "displayName": "holland_code",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "skills",
+              "displayName": "skills",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "chosen_career_id",
+              "displayName": "chosen_career_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        96,
+        2608
+      ],
+      "id": "fd19738b-01bf-4ecc-98a1-193f72e796f5",
+      "name": "Career Path Match Scoring"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        560,
+        1552
+      ],
+      "id": "2ffba694-a8cd-45ca-b2f3-f11ee02d66ed",
+      "name": "Google Gemini Chat Model7",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "6PAgHURdVDui50hq",
+          "name": "Google Gemini(PaLM) Api account 36"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-embedding-001"
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        224,
+        1760
+      ],
+      "id": "1b73f630-7b38-4e4a-bfd4-f801c8f43453",
+      "name": "Embeddings Google Gemini5",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "6PAgHURdVDui50hq",
+          "name": "Google Gemini(PaLM) Api account 36"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "Returns documents related to the Holland RIASEC personality model and the Saudi Digital Skills Framework. The data includes explanations of the six Holland personality types (Realistic, Investigative, Artistic, Social, Enterprising, and Conventional), descriptions of personality traits and interests, and information about digital job families, roles, and required skills in the Saudi digital sector. These documents help interpret users’ Holland personality results and connect them with suitable digital career paths and skills based on the Saudi Digital Skills Framework.",
+        "topK": 2
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolVectorStore",
+      "typeVersion": 1.1,
+      "position": [
+        320,
+        1328
+      ],
+      "id": "53f036e9-ccf8-4ad3-8590-89ef1a7d83a8",
+      "name": "Answer questions with a vector store3"
+    },
+    {
+      "parameters": {
+        "content": "# Agent Personality Test",
+        "height": 960,
+        "width": 1072
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -304,
+        944
+      ],
+      "id": "6c7587b9-ea02-46e5-af6e-9d16d615b92a",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -208,
+        1280
+      ],
+      "id": "0b24903c-0a84-44a9-a671-18c560222f05",
+      "name": "Google Gemini Chat Model8",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "6PAgHURdVDui50hq",
+          "name": "Google Gemini(PaLM) Api account 36"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=The user has already submitted all Holland assessment answers. Do not ask again.\n\nDo not read, analyze, or explain the answers array.\n\nCall User Holland Scoring immediately with these exact inputs:\n\nuser_id: {{$json.user_id}}\n\ntest_version: {{$json.test_version}}\n\nanswers: {{ JSON.stringify($json.answers) }}\n\nAfter the tool returns the result, use only the tool output to create the final JSON.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=You are a Holland personality analysis agent for IT careers. Current date/time: {{ $now.toString() }}\n\nTools:\n- User Holland Scoring: calculates Holland scores, percentages, and top3_code from workflow answers.\n- Vector Store: retrieves Holland personality explanations.\n\nMain rules:\n1. If answers exist in workflow input, do not ask the user anything.\n2. Call User Holland Scoring immediately and exactly once.\n3. Do not read, interpret, modify, or manually calculate the answers array.\n4. Use only the scoring tool result for scores, percentages, and top3_code.\n5. Call the vector store exactly once using only the top3_code or trait names to retrieve personality explanations.\n6. Rewrite the retrieved explanation for Information Technology contexts only.\n7. Do not list specific careers.\n8. Do not repeat percentages in the summary.\n9. If the scoring tool fails, retry once only.\n10. Return raw valid JSON only, with no markdown, no preamble, and no extra keys.\n\nInterpretation rules:\nInterpret Holland results for IT environments only and do not mention any careers or fields. Describe how each trait focuses and behaves in a technical work environment, such as how it approaches tasks, problem-solving, or teamwork (as examples, not limitations). Keep the explanation concise (2–3 sentences) and end with one sentence that combines the top 3 traits into a unified behavior in IT.\n\nRequired JSON format:\n{\n  \"top3_code\": \"ERC\",\n  \"percentages\": {\n    \"R\": \"64%\",\n    \"I\": \"43%\",\n    \"A\": \"57%\",\n    \"S\": \"57%\",\n    \"E\": \"79%\",\n    \"C\": \"61%\"\n  },\n  \"scores\": {\n    \"R\": 3,\n    \"I\": 12,\n    \"A\": 8,\n    \"S\": 10,\n    \"E\": 6,\n    \"C\": 4\n  },\n  \"summary\": \"Short IT-focused explanation in 3 to 4 sentences.\"\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        64,
+        1088
+      ],
+      "id": "b30f0bb0-7619-4088-93a9-0d0e1ce5377f",
+      "name": "AI Agent3",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "b36090d3-e177-496d-b176-802ff7126d92",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -272,
+        1072
+      ],
+      "id": "8269bcb6-29b7-4feb-90c7-9c0d4a246311",
+      "name": "Webhook2",
+      "webhookId": "b36090d3-e177-496d-b176-802ff7126d92"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d0f77883-f696-4b1c-ba0d-41b1fde0ef5a",
+              "name": "user_id",
+              "value": "={{ $json.body.user_id }}",
+              "type": "string"
+            },
+            {
+              "id": "941a3506-6fde-4e81-b78a-4433eac50c6c",
+              "name": "attempt_id",
+              "value": "={{ $json.body.attempt_id }}",
+              "type": "string"
+            },
+            {
+              "id": "beebe0ee-9931-4715-995f-2c944fade84d",
+              "name": "test_version",
+              "value": "={{ $json.body.test_version }}",
+              "type": "string"
+            },
+            {
+              "id": "9c503010-3e59-4414-af4a-ea9bb9429662",
+              "name": "answers",
+              "value": "={{ $json.body.answers }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -128,
+        1072
+      ],
+      "id": "61d0f1d6-5c30-49fb-9048-a20baab70ae2",
+      "name": "Edit Fields3"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        480,
+        1056
+      ],
+      "id": "badee714-3af3-4bc5-bcc4-6d8b621837dd",
+      "name": "Respond to Webhook2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "08b33171-e35b-4aae-a5e5-320e45a8a846",
+              "name": "top3_code",
+              "value": "={{ $json.output.top3_code }}",
+              "type": "string"
+            },
+            {
+              "id": "a42edcf2-34eb-4e87-9a09-397ad122149e",
+              "name": "percentages",
+              "value": "={{ $json.output.percentages }}",
+              "type": "object"
+            },
+            {
+              "id": "65d3c45f-dc4d-45b6-bf64-1eb3b17641fd",
+              "name": "summary",
+              "value": "={{ $json.output.summary }}",
+              "type": "string"
+            },
+            {
+              "id": "320f87e2-b37c-4d23-b02e-82774aafb6ce",
+              "name": "scores",
+              "value": "={{ $json.output.scores }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        336,
+        1072
+      ],
+      "id": "b85b7c7f-4eaa-4ad1-9340-fabb18637dc4",
+      "name": "Edit Fields4"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=User information:\n\nUser ID: {{ $json.user_id }}\n\nMode: {{ $json.mode }}\n\nHolland personality code: {{ $json.holland_code }}\n\nUser skills:{{ $json.skills }}\n\nChosen career ID: {{ $json.chosen_career_id }}\n\nIf the mode is “suggestion”:\nSuggest the top 3 most suitable IT career paths for this user based on the Holland personality code and the user’s skills.\n\nIf the mode is “manual”:\nEvaluate how well the user’s personality and skills match the specified career and calculate the compatibility.\n\nAlways consider:\n • Personality (Holland Code)\n • Technical Skills\n • IT job requireme",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=## Overview\nYou are a Career Path AI Agent specialized in Information Technology careers. Your task is to recommend IT career paths based on the user’s Holland personality code and technical skills.\n\n-------------------------------------\nEXECUTION ORDER\nFollow this exact order:\n\n1. Call Career Path Match Scoring ONCE.\n2. Pass only:\n   - mode\n   - holland_code\n   - skills\n   - chosen_career_id only if manual mode\n3. Use the scoring result:\n   - suggestion mode → use the returned top 3 careers\n   - manual mode → use the returned selected career\n   - In manual mode, return ONLY one career object inside \"career\"\n   - Do NOT return \"careers\" in manual mode\n4. Call vector store ONCE only for the selected careers together.\n5. Generate the final JSON response immediately.\n\n-------------------------------------\nSCORING TOOL RULE\nWhen calling Career Path Match Scoring:\n- Pass only user input\n- Do NOT pass jobs data\n- Do NOT pass Google Sheets data\n- Do NOT add explanations\n- Do NOT call the tool more than once\n\nRequired input format:\n{\n  \"mode\": \"suggestion\",\n  \"holland_code\": \"EIR\",\n  \"skills\": [\"SQL\", \"Excel\", \"Python\", \"Git\"]\n}\n\n-------------------------------------\nDATA RULES\n- Do not modify tool outputs\n- Do not invent missing values\n- Preserve exact scoring results\n- Do not retry tools\n- If scoring is already available, return output\n\n-------------------------------------\nVECTOR STORE RULE\nCall the vector store only if careers were selected.\nIn suggestion mode: Call the vector store ONCE for all 3 selected careers together.\nIn manual mode: Call the vector store ONCE for the selected career.\n\n-------------------------------------\nAI EXPLANATION RULES\nFor each ai_explanation:\n- Write in simple English for students\n- Use ONE paragraph only\n- Maximum 2–3 sentences\n- Start with the job domain\n- Briefly explain what the job does\n- Describe requirements in a general way\n- Explain why the role fits the user\n- Mention that some areas still need improvement\n- Add one short sentence about personality fit\n- Do NOT mention Holland codes\n- Do NOT repeat numeric scores\n- Do NOT list specific skills such as Python, SQL, or Excel\n\n-------------------------------------\nGENERAL RULES\n- Work only with IT careers from the dataset\n- Use Career Path Match Scoring for all calculations\n- strengths = matched skills only\n- gaps = missing skills only\n\n-------------------------------------\nOUTPUT RULES\n- Return valid JSON only.\n- Start your response with '{' and end with '}'.\n- NO markdown fences (```json).\n- NO extra text or conversational preamble.\n\n-------------------------------------\nOUTPUT FORMAT\n(Keep your exact JSON structure here - same as your original prompt)\n\nSuggestion mode:\n{\n  \"mode\": \"suggestion\",\n  \"careers\": [\n    {\n      \"career_id\": 12,\n      \"career_title\": \"Data Analyst\",\n      \"overall_match\": 71,\n      \"holland_match\": 83,\n      \"skills_match\": 60,\n      \"strengths\": [\"Python\", \"SQL\", \"Excel\"],\n      \"gaps\": [\"Statistics\", \"Tableau\"],\n      \"ai_explanation\": \"...\"\n    }\n  ]\n}\n\nManual mode:\n{\n  \"mode\": \"manual\",\n  \"career\": {\n    \"career_id\": 12,\n    \"career_title\": \"Data Analyst\",\n    \"overall_match\": 71,\n    \"holland_match\": 83,\n    \"skills_match\": 60,\n    \"strengths\": [\"Python\", \"SQL\", \"Excel\"],\n    \"gaps\": [\"Statistics\", \"Tableau\"],\n    \"ai_explanation\": \"...\"\n  }\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        112,
+        2208
+      ],
+      "id": "738ee95d-d514-4489-8639-4baf0085c8aa",
+      "name": "AI Agent4",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "career-match",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -288,
+        2192
+      ],
+      "id": "cd35e70e-9be2-491e-8833-000b98dec65a",
+      "name": "Webhook3",
+      "webhookId": "0ed04c73-c9f2-4684-b2d9-c746ee4df2c2"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json.output}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        592,
+        2176
+      ],
+      "id": "27e84fd8-5333-4e17-a46b-ab4d19f900d8",
+      "name": "Respond to Webhook3"
+    },
+    {
+      "parameters": {
+        "description": "Calculate IT career match using the user's Holland code and skills.",
+        "workflowId": {
+          "__rl": true,
+          "value": "GaZk6PTVYf0LAQGG4yzZO",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/GaZk6PTVYf0LAQGG4yzZO",
+          "cachedResultName": "Career Path Match Scoring"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "mode": "={{ $json.mode }}",
+            "holland_code": "={{ $json.holland_code }}",
+            "skills": "={{ $json.skills }}",
+            "chosen_career_id": "={{ $json.chosen_career_id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "mode",
+              "displayName": "mode",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "holland_code",
+              "displayName": "holland_code",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "skills",
+              "displayName": "skills",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "chosen_career_id",
+              "displayName": "chosen_career_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        224,
+        2448
+      ],
+      "id": "b6b4d4e3-8ebb-4ded-8f6f-3e29f60990e1",
+      "name": "Call 'Career Path Match Scoring'"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Use this tool to check if a normalized skill already exists in the sheet.\n\nWhen to use:\n- Always call this tool first for each normalized skill.\n\nHow to use:\n- Search using:\n  Column = normalized skill\n  Value = the normalized skill\n\nRules:\n- Call once per normalized skill only.\n- Do not repeat the call for the same skill.\n- If a row is found:\n  - reuse Match Status and System Skill\n  - do not call Append\n- If no row is found:\n  - proceed to matching, then use Append tool.",
+        "documentId": {
+          "__rl": true,
+          "value": "1SJpIZRlBgesDShEpexXxnVYwjYVfkz0wVQ_oQr73H2o",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1942215445,
+          "mode": "list",
+          "cachedResultName": "skills_cache",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1SJpIZRlBgesDShEpexXxnVYwjYVfkz0wVQ_oQr73H2o/edit#gid=1942215445"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "normalized skill",
+              "lookupValue": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('values0_Value', ``, 'string') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        2000,
+        2432
+      ],
+      "id": "204f2682-f46f-44f1-a533-38281e121570",
+      "name": "Get row(s) in sheet in Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "C43cWcu4T2yOZj8U",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Use this tool to store a new skill only if it was not found in the sheet.\n\nWhen to use:\n- Call this tool only after Get tool returns no result.\n\nHow to use:\n- Append one row with:\n  - normalized skill\n  - Entered Skill\n  - Match Status\n  - System Skill\n\nRules:\n- Call once per new skill only.\n- Do not append if the skill already exists.\n- Do not append duplicates.",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1SJpIZRlBgesDShEpexXxnVYwjYVfkz0wVQ_oQr73H2o",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1942215445,
+          "mode": "list",
+          "cachedResultName": "skills_cache",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1SJpIZRlBgesDShEpexXxnVYwjYVfkz0wVQ_oQr73H2o/edit#gid=1942215445"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "normalized skill": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('normalized_skill', ``, 'string') }}",
+            "Entered Skill": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Entered_Skill', ``, 'string') }}",
+            "Match Status": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Match_Status', ``, 'string') }}",
+            "System Skill": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('System_Skill', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "normalized skill",
+              "displayName": "normalized skill",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Entered Skill",
+              "displayName": "Entered Skill",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Match Status",
+              "displayName": "Match Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "System Skill",
+              "displayName": "System Skill",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        2224,
+        2432
+      ],
+      "id": "a644c772-952d-4f74-9d9d-e748aa1577af",
+      "name": "Append row in sheet in Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "C43cWcu4T2yOZj8U",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "extract_cv_skills",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        1536,
+        2240
+      ],
+      "id": "6e22befa-f1c3-43f7-9b78-328b4dd6f449",
+      "name": "Webhook4",
+      "webhookId": "89516704-0157-42f2-b821-661d6e3728c3"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2528,
+        2240
+      ],
+      "id": "d5136be1-410c-4bec-9537-b781c611576f",
+      "name": "Respond to Webhook4"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1776,
+        2432
+      ],
+      "id": "3bf558f2-bbcf-4945-b7f5-29d2e0c893be",
+      "name": "Google Gemini Chat Model9",
+      "retryOnFail": true,
+      "waitBetweenTries": 5,
+      "executeOnce": false,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "6PAgHURdVDui50hq",
+          "name": "Google Gemini(PaLM) Api account 36"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $input.first().json.output || '';\n\nconst clean = text\n  .replace(/```json/g, '')\n  .replace(/```/g, '')\n  .trim();\n\ntry {\n  return [\n    {\n      json: JSON.parse(clean)\n    }\n  ];\n} catch (error) {\n  return [\n    {\n      json: {\n        error: true,\n        raw_output: text,\n        cleaned_output: clean,\n        message: error.message\n      }\n    }\n  ];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2304,
+        2240
+      ],
+      "id": "d68c3bf3-9e1c-4f70-a64f-d3e7c62cea42",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a skill extraction and matching assistant.\n\nGoal:\nExtract user skills, normalize them, check them in Google Sheets, reuse existing results if found, otherwise match and store new results, then return JSON only.\n\nInput:\n- source_type: \"cv\" or \"manual\"\n- cv_text\n- manual_skill\n- official system skills\n\nExtraction:\n\nIf source_type = \"manual\":\n- Use the skills exactly as provided\n- Split only by comma or semicolon\n- Do not add, remove, or infer anything\n\nIf source_type = \"cv\":\n- Extract skills only from the explicit Skills section\n- Do not extract from any other section\n- Do not infer or generate skills\n\nNormalization:\n- lowercase\n- trim spaces\n- remove extra spaces\n- remove duplicates\n\nProcessing logic:\n\nFor each unique normalized skill:\n1) Call Google Sheets Get tool\n   - Column = normalized skill\n   - Value = the normalized skill\n\n2) If found:\n   - reuse Match Status and System Skill\n   - do not append\n\n3) If not found:\n   - compare with official system skills\n   - \"match\" only if clearly the same\n   - otherwise \"non-match\"\n   - if matched, use exact system skill name\n   - then call Append tool once\n\nRules:\n- Process each skill only once\n- Do not repeat tool calls for the same skill\n- Do not append duplicates\n- Do not invent or infer skills\n- Return JSON only (no text)\n\nOutput:\n{\n  \"results\": [\n    {\n      \"extracted_skill\": \"\",\n      \"match_status\": \"\",\n      \"matched_system_skill\": \"\"\n    }\n  ]\n}\n\nsource_type:\n{{ $json.source_type }}\n\ncv_text:\n{{ $json.cv_text }}\n\nmanual_skill:\n{{ $json.manual_skill }}\n\nofficial system skills:\n{{ JSON.stringify($json.system_skills) }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1952,
+        2240
+      ],
+      "id": "04246165-cf54-4d7b-8665-58be709eee7a",
+      "name": "AI Agent5",
+      "retryOnFail": true,
+      "maxTries": 5
+    },
+    {
+      "parameters": {
+        "jsCode": "function sanitizeText(text) {\n  if (!text || typeof text !== 'string') return '';\n\n  let cleaned = text;\n\n  // إخفاء الإيميلات\n  cleaned = cleaned.replace(\n    /[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/gi,\n    '[REDACTED_EMAIL]'\n  );\n\n  // إخفاء أرقام الجوال/الهاتف\n  cleaned = cleaned.replace(\n    /(\\+?\\d[\\d\\s\\-()]{7,}\\d)/g,\n    '[REDACTED_PHONE]'\n  );\n\n  // إخفاء الروابط\n  cleaned = cleaned.replace(\n    /https?:\\/\\/\\S+/gi,\n    '[REDACTED_LINK]'\n  );\n\n  // إخفاء أرقام طويلة محتملة مثل الهوية\n  cleaned = cleaned.replace(\n    /\\b\\d{10,}\\b/g,\n    '[REDACTED_ID]'\n  );\n\n  return cleaned;\n}\n\nconst items = $input.all();\n\nfor (const item of items) {\n  const body = item.json.body || {};\n\n  item.json = {\n    source_type: body.source_type || null,\n    user_id: body.user_id || null,\n    cv_text: sanitizeText(body.cv_text || ''),\n    manual_skill: body.manual_skill || '',\n    system_skills: body.system_skills || []\n  };\n}\n\nreturn items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1744,
+        2240
+      ],
+      "id": "da28ba03-ce23-4968-9246-da973ffc5bb8",
+      "name": "Code in JavaScript3"
+    },
+    {
+      "parameters": {
+        "content": "#matches_skill",
+        "height": 896,
+        "width": 1424
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1424,
+        2064
+      ],
+      "id": "a7dff8c7-6648-4710-b394-35b2a23038a0",
+      "name": "Sticky Note7"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtHour": 12
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        1616,
+        3184
+      ],
+      "id": "f4ab855b-ad93-4a6f-9b0c-81f803479fe6",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal/GUIDEME1/guideme/phpmailer-master/Notification_API.php",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "Z7@qL9!vX3#nT5$KpR8^bH2*YfD6&cWmQ4sE"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1824,
+        3200
+      ],
+      "id": "2276cd2e-80d1-4bc4-b620-64c03fc91b44",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.body }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1904,
+        3472
+      ],
+      "id": "d7d88150-67a6-4308-924b-ce027f82bf80",
+      "name": "Send a message",
+      "webhookId": "e43e23b6-c262-4c1c-b219-9f9cb06f5d24",
+      "alwaysOutputData": false,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "2XE2hGEsE77lN4AI",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "users",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        2048,
+        3200
+      ],
+      "id": "02cd3add-1f22-4117-9483-391e62958278",
+      "name": "Split Out",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "5ed2a6fe-7d1c-4e7c-a7e6-e9c06f8e033c",
+              "leftValue": "={{ $json.send_email }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1680,
+        3488
+      ],
+      "id": "3902c91b-ad21-4503-b4b7-c9afaef21269",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal/GUIDEME1/guideme/phpmailer-master/mark_completion_email_sent.php",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "r9K!xT7@Q2vL#5mZ8^WcH3*YpD6&N4sB"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2080,
+        3472
+      ],
+      "id": "b690e873-a135-4369-bdf9-2170cd7a0f56",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are the GuideMe notification decision agent.\n\nYour task is to analyze ONE user's data and decide whether an email should be sent or not.\n\nUse the user data provided from n8n:\n- user_id: {{$json.user_id}}\n- username: {{$json.username}}\n- email: {{$json.email}}\n- top3_code: {{$json.top3_code}}\n- career_title: {{$json.career_title}}\n- gaps_count: {{$json.gaps_count}}\n- gaps: {{$json.gaps}}\n- planned_skills_count: {{$json.planned_skills_count}}\n- planned_skills: {{$json.planned_skills}}\n- quiz_skills_count: {{$json.quiz_skills_count}}\n- quiz_skills: {{$json.quiz_skills}}\n- last_login: {{$json.last_login}}\n- last_quiz_skill: {{$json.last_quiz_skill}}\n- last_quiz_date: {{$json.last_quiz_date}}\n- last_quiz_score: {{$json.last_quiz_score}}\n- completion_email_sent: {{$json.completion_email_sent}}\n\nIMPORTANT RULE:\n- If completion_email_sent = 1:\n  Do not send any email regardless of other conditions.\n\nGuideMe logic:\n1. If top3_code is empty/null:\n   Send an email encouraging the user to take the personality test.\n\n2. If top3_code exists but career_title is empty/null:\n   Send an email telling the user their result is ready and they should choose a suitable career.\n\n3. If career_title exists and gaps_count = 0:\n   Do not send an email.\n\n4. If gaps_count > 0 and planned_skills_count = 0:\n   Send an email encouraging the user to generate a plan for the first missing skill.\n\n5. If planned_skills_count > 0:\n   Check planned_skills and quiz_skills:\n   - If there are planned skills that are not in quiz_skills:\n     Send an email reminding the user to complete the quiz for the planned skill(s).\n   - If the last_quiz_score is below 80:\n     Send an email encouraging the user to review and retry the quiz for last_quiz_skill.\n   - If all planned skills are in quiz_skills and last_quiz_score is 80 or above, but quiz_skills_count < gaps_count:\n     Send an email encouraging the user to move to the next missing skill and generate its plan.\n   - If quiz_skills_count = gaps_count and last_quiz_score is 80 or above:\n     Send a congratulations email that the user completed their skill development plan for the selected career.\n\nEmail rules:\n- Write in English.\n- Make it short, friendly, and motivational.\n- Mention the user's name.\n- Mention the career title if available.\n- Do not sound robotic.\n- Do not mention internal database names.\n- Do not explain the logic to the user.\n\nEmail body format rules:\n- Always write the email body in this exact structure:\n  1. Greeting: Hi [username],\n  2. One short opening sentence.\n  3. One short paragraph explaining the user’s current situation.\n  4. One clear action sentence telling the user what to do next.\n  5. Closing:\n     Best regards,\n     GuideMe Team\n\n- Use line breaks between each part.\n- Do not write the whole email as one paragraph.\n- Keep the body between 80 and 120 words.\n- Do not use markdown symbols.\n- Do not add extra signatures.\n- The body must include line breaks using \\n\\n.\n\nReturn ONLY valid JSON in this exact format:\n\n{\n  \"send_email\": true,\n  \"to\": \"user email here\",\n  \"subject\": \"email subject here\",\n  \"body\": \"Hi username,\\n\\nOpening sentence here.\\n\\nSituation paragraph here.\\n\\nNext action sentence here.\\n\\nBest regards,\\nGuideMe Team\"\n}\n\nIf no email should be sent, return ONLY:\n\n{\n  \"send_email\": false,\n  \"reason\": \"short reason\"\n}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        2416,
+        3152
+      ],
+      "id": "d673447f-649f-4e33-93c4-cd1bc15d7a4e",
+      "name": "AI Agent6"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        2400,
+        3328
+      ],
+      "id": "a886ff32-8d33-490f-9f24-47032135a1c3",
+      "name": "Google Gemini Chat Model10",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "6PAgHURdVDui50hq",
+          "name": "Google Gemini(PaLM) Api account 36"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  let output = item.json.output;\n\n  output = output\n    .replace(/```json/g, \"\")\n    .replace(/```/g, \"\")\n    .trim();\n\n  const parsed = JSON.parse(output);\n\n  return {\n    json: {\n      send_email: parsed.send_email,\n      to: parsed.to || \"\",\n      subject: parsed.subject || \"\",\n      body: parsed.body || \"\",\n      reason: parsed.reason || \"\"\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2672,
+        3552
+      ],
+      "id": "be0af12f-b467-43bb-84de-7bd2ef774ad7",
+      "name": "Code in JavaScript4"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Answer questions with a vector store": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pinecone Vector Store2": {
+      "ai_vectorStore": [
+        [
+          {
+            "node": "Answer questions with a vector store",
+            "type": "ai_vectorStore",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini1": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Pinecone Vector Store2",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Answer questions with a vector store",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "AI Agent2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent2": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pinecone Vector Store1": {
+      "ai_vectorStore": [
+        [
+          {
+            "node": "Answer questions with a vector store3",
+            "type": "ai_vectorStore",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "User Holland Scoring": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent3",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent3",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model4": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Answer questions with a vector store2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini3": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Pinecone Vector Store3",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pinecone Vector Store3": {
+      "ai_vectorStore": [
+        [
+          {
+            "node": "Answer questions with a vector store2",
+            "type": "ai_vectorStore",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Answer questions with a vector store2": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent4",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model5": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent4",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields2": {
+      "main": [
+        [
+          {
+            "node": "AI Agent4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser1": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent4",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Career Path Match Scoring": {
+      "ai_tool": [
+        []
+      ]
+    },
+    "Google Gemini Chat Model7": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Answer questions with a vector store3",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini5": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Pinecone Vector Store1",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Answer questions with a vector store3": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent3",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model8": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent3",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent3": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook2": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields3": {
+      "main": [
+        [
+          {
+            "node": "AI Agent3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields4": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent4": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook3": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Career Path Match Scoring'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent4",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet in Google Sheets": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent5",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet in Google Sheets": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent5",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook4": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model9": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent5",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent5": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "AI Agent5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "AI Agent6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent6": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model10": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent6",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript4": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "8e18308b-1f17-48f2-b2e1-f35df76da7c0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4fbdf62ca3be1cee31704da69a1f97b7c6264acea72497f5513a9513e38779ef"
+  },
+  "id": "esMKag6OeDmSdNHpg5qpb",
+  "tags": []
+}

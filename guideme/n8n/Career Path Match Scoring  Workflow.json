@@ -1,0 +1,105 @@
+{
+  "name": "Career Path Match Scoring",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "mode"
+            },
+            {
+              "name": "holland_code"
+            },
+            {
+              "name": "skills"
+            },
+            {
+              "name": "chosen_career_id"
+            }
+          ]
+        }
+      },
+      "id": "1d695c46-1adc-4ea3-8f6b-0832d8498b1d",
+      "typeVersion": 1.1,
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "position": [
+        -688,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const triggerData = $(\"When Executed by Another Workflow\").first().json;\n\nconst mode = triggerData.mode || \"suggestion\";\nconst personCode = triggerData.holland_code || \"\";\nconst userSkills = Array.isArray(triggerData.skills) ? triggerData.skills : [];\nconst chosenCareerId = triggerData.chosen_career_id || null;\n\n// rows من Google Sheets\nconst rawRows = items.map(item => item.json);\n\nif (!rawRows.length) {\n  return [\n    {\n      json: {\n        mode,\n        careers: [],\n        error: \"No rows returned from Google Sheets\"\n      }\n    }\n  ];\n}\n\n// ==============================\n// HELPERS\n// ==============================\nconst norm = (s) => String(s || \"\").trim().toLowerCase();\n\nfunction uniqueArray(arr) {\n  const seen = new Set();\n  const result = [];\n\n  for (const item of arr) {\n    const value = String(item || \"\").trim();\n    const key = norm(value);\n\n    if (!value || seen.has(key)) continue;\n    seen.add(key);\n    result.push(value);\n  }\n\n  return result;\n}\n\nfunction toSet(arr) {\n  return new Set(arr.map(norm).filter(Boolean));\n}\n\nfunction splitSkills(text) {\n  if (!text) return [];\n\n  return String(text)\n    .split(/\\s*-\\s*|\\n/)\n    .map(s => s.trim())\n    .filter(Boolean);\n}\n\nfunction getField(obj, name) {\n  const key = Object.keys(obj).find(k => k.trim() === name);\n  return key ? obj[key] : \"\";\n}\n\n// ==============================\n// CLEAN RAW SHEET ROWS\n// ==============================\nconst jobs = rawRows.map(job => ({\n  career_id: job.career_id || null,\n  job_title: job.job_title || \"\",\n  job_family: job.job_family || \"\",\n  holland_code: job.holland_code || \"\",\n  beginner: uniqueArray(splitSkills(job.beginner_level || \"\")),\n  intermediate: uniqueArray(splitSkills(job.intermediate_level || \"\"))\n}));\n// ==============================\n// HOLLAND C-INDEX\n// ==============================\nfunction cIndex(personCode, jobCode) {\n  const a = String(personCode || \"\").toUpperCase().split(\"\");\n  const b = String(jobCode || \"\").toUpperCase().split(\"\");\n  const ria = [\"R\", \"I\", \"A\", \"S\", \"E\", \"C\"];\n\n  function wrapIndex(n) {\n    let temp = n % 6;\n    if (temp < 0) temp += 6;\n    return temp;\n  }\n\n  let total = 0;\n  const maxLen = Math.min(3, a.length, b.length);\n\n  for (let i = 0; i < maxLen; i++) {\n    const p = a[i];\n    const u = b[i];\n    let score = 0;\n\n    if (p === u) {\n      score = 3;\n    } else {\n      const pos = ria.indexOf(p);\n      if (pos === -1) continue;\n\n      const left1 = ria[wrapIndex(pos - 1)];\n      const right1 = ria[wrapIndex(pos + 1)];\n      const left2 = ria[wrapIndex(pos - 2)];\n      const right2 = ria[wrapIndex(pos + 2)];\n\n      if (u === left1 || u === right1) score = 2;\n      else if (u === left2 || u === right2) score = 1;\n    }\n\n    total += score * (3 - i);\n  }\n\n  return total;\n}\n\n// ==============================\n// JACCARD SKILLS\n// ==============================\nfunction jaccardSimilarity(a, b) {\n  const A = new Set(a.map(norm).filter(Boolean));\n  const B = new Set(b.map(norm).filter(Boolean));\n\n  const intersection = new Set([...A].filter(x => B.has(x)));\n  const union = new Set([...A, ...B]);\n\n  if (union.size === 0) return 0;\n  return intersection.size / union.size;\n}\n\n// ==============================\n// STAGE 1: HOLLAND SCORING\n// ==============================\nlet hollandScored = jobs.map(job => {\n  const score = cIndex(personCode, job.holland_code);\n  const pct = Math.round((score / 18) * 100);\n\n  return {\n    ...job,\n    holland_percentage: pct\n  };\n});\n\nhollandScored.sort((a, b) => b.holland_percentage - a.holland_percentage);\n\n// ==============================\n// MANUAL MODE\n// ==============================\nif (mode === \"manual\") {\n  const chosen = hollandScored.find(\n    j => String(j.career_id) === String(chosenCareerId)\n  );\n\n  if (!chosen) {\n    return [\n      {\n        json: {\n          mode: \"manual\",\n          career: null,\n          error: \"Chosen career not found\"\n        }\n      }\n    ];\n  }\n\n  const jobSkills = uniqueArray([\n    ...chosen.beginner,\n    ...chosen.intermediate\n  ]);\n\n  const jsim = jaccardSimilarity(userSkills, jobSkills);\n  const spct = Math.round(jsim * 100);\n\n  const userSet = toSet(userSkills);\n  const matched = jobSkills.filter(skill => userSet.has(norm(skill)));\n  const missing = jobSkills.filter(skill => !userSet.has(norm(skill)));\n\n  const overall = Math.round(\n    (chosen.holland_percentage * 0.5) + (spct * 0.5)\n  );\n\n  return [\n    {\n      json: {\n        mode: \"manual\",\n        career: {\n          career_id: chosen.career_id,\n          career_title: chosen.job_title,\n          job_family: chosen.job_family,\n          holland_code: chosen.holland_code,\n          overall_match: overall,\n          holland_match: chosen.holland_percentage,\n          skills_match: spct,\n          strengths: matched,\n          gaps: missing\n        }\n      }\n    }\n  ];\n}\n// ==============================\n// SUGGESTION MODE\n// أفضل 6 بالهولاند ثم أفضل 3 بالمهارات\n// ==============================\nconst top6 = hollandScored.slice(0, 6);\n\nfunction scoreSkills(job) {\n  const jobSkills = uniqueArray([\n    ...job.beginner,\n    ...job.intermediate\n  ]);\n\n  const jsim = jaccardSimilarity(userSkills, jobSkills);\n  const spct = Math.round(jsim * 100);\n\n  const userSet = toSet(userSkills);\n  const matched = jobSkills.filter(skill => userSet.has(norm(skill)));\n  const missing = jobSkills.filter(skill => !userSet.has(norm(skill)));\n\n  const overall = Math.round(\n    (job.holland_percentage * 0.5) + (spct * 0.5)\n  );\n\n  return {\n    career_id: job.career_id,\n    career_title: job.job_title,\n    job_family: job.job_family,\n    holland_code: job.holland_code,\n    overall_match: overall,\n    holland_match: job.holland_percentage,\n    skills_match: spct,\n    strengths: matched,\n    gaps: missing\n  };\n}\n\nconst top3 = top6\n  .map(scoreSkills)\n  .sort((a, b) => b.overall_match - a.overall_match)\n  .slice(0, 3);\n\nreturn [\n  {\n    json: {\n      mode: \"suggestion\",\n      careers: top3\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -176,
+        128
+      ],
+      "id": "9060bb0a-6684-4cc6-9812-774909601f37",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  career_id,\n  job_family,\n  job_title,\n  holland_code,\n  beginner_level,\n  beginner_tools,\n  intermediate_level,\n  intermediate_tools\nFROM careers;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        -432,
+        128
+      ],
+      "id": "a6edba4b-bb0b-4316-a630-543edc6717f5",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "mySql": {
+          "id": "8iACkGXGFykhkjIk",
+          "name": "MySQL account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "a680a51b-a539-41cc-a944-8e8671e32aac",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4fbdf62ca3be1cee31704da69a1f97b7c6264acea72497f5513a9513e38779ef"
+  },
+  "id": "GaZk6PTVYf0LAQGG4yzZO",
+  "tags": []
+}
