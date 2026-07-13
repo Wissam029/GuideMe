@@ -204,39 +204,27 @@ The project database contains tables for:
 ---
 ## 📸 Screenshots
 
-### Home Page
-![Home Page](screenshots/Home%20page.png)
+![Home Page](guideme/screenshots/Home%20page.png)
 
-### User Profile
-![Profile](screenshots/Profile.png)
+![Profile](guideme/screenshots/Profile.png)
 
-### Personality Test
-![Personality Test](screenshots/Personality%20Test.png)
+![Personality Test](guideme/screenshots/Personality%20Test.png)
 
-### Personality Test Result
-![Personality Test Result](screenshots/Personality%20Test%20Result.png)
+![Personality Test Result](guideme/screenshots/Personality%20Test%20Result.png)
 
-### Career Path Selection
-![Career Path Selection](screenshots/Career%20Path%20Selection.png)
+![Career Path Selection](guideme/screenshots/Career%20Path%20Selection.png)
 
-### Manual Career Selection
-![Manual Career Selection](screenshots/Manual%20Career%20Selection.png)
+![Manual Career Selection](guideme/screenshots/Manual%20Career%20Selection.png)
 
-### Generated Career Path Suggestions
-![Generated Career Path Suggestions](screenshots/Generated%20Career%20Path%20Suggestions%20Result.png)
+![Generated Career Path Suggestions](guideme/screenshots/Generated%20Career%20Path%20Suggestions%20Result.png)
 
-### Detailed Career Analysis
-![Detailed Career Analysis](screenshots/Detailed%20Career%20Analysis%20View.png)
+![Detailed Career Analysis](guideme/screenshots/Detailed%20Career%20Analysis%20View.png)
 
-### Dashboard
-![Dashboard](screenshots/Dashboard.png)
+![Dashboard](guideme/screenshots/Dashboard.png)
 
-### Personalized Learning Plan
-![Learning Plan](screenshots/Plan.png)
+![Learning Plan](guideme/screenshots/Plan.png)
 
-### AI Quiz
-![Quiz](screenshots/quiz.png)
-
+![Quiz](guideme/screenshots/quiz.png)
 ## Authors
 
 - Wesam Albladi
