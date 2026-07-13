@@ -220,6 +220,4 @@ Supervisor:
 
 This project was developed as a Graduation Project for academic purposes.
 
-```
 
----
